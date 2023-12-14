@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"go-limits/table"
+	"go-limits/window"
 	"net/http"
 )
 
 var tbl *table.Table
+var fixedWindowlimiter *window.FixedWindowLimiter
 
 func getClientIpAddr(req *http.Request) string {
 	clientIp := req.Header.Get("X-FORWARDED-FOR")
@@ -16,24 +18,36 @@ func getClientIpAddr(req *http.Request) string {
 	return req.RemoteAddr
 }
 
-func limited(w http.ResponseWriter, r *http.Request) {
+func bucket(w http.ResponseWriter, r *http.Request) {
 	ip := getClientIpAddr(r)
 	if tbl.HandleRequest(ip) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Request handled successfully.")
 	} else {
 		w.WriteHeader(http.StatusTooManyRequests)
-		fmt.Fprint(w, "Request declined. Bucket is empty.")
+		fmt.Fprint(w, "Request declined.")
 	}
 	fmt.Fprintf(w, "limited %s", ip)
 }
 
-func getAll(w http.ResponseWriter, r *http.Request) {
+func fixedWindow(w http.ResponseWriter, r *http.Request) {
+	ip := getClientIpAddr(r)
+	if fixedWindowlimiter.HandleRequest(ip) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Request handled successfully.")
+	} else {
+		w.WriteHeader(http.StatusTooManyRequests)
+		fmt.Fprint(w, "Request declined.")
+	}
+	fmt.Fprintf(w, "limited %s", ip)
 }
 
 func main() {
-	http.HandleFunc("/limited", limited)
-  http.HandleFunc("/getAll", getAll)
-	tbl = table.NewTable()
+	//tbl = table.NewTable()
+	fixedWindowlimiter = window.NewFixedWindowLimiter(5, 10)
+	http.HandleFunc("/limitedBucket", bucket)
+	http.HandleFunc("/limitedFixedWindow", fixedWindow)
+
+
 	http.ListenAndServe(":8080", nil)
 }
