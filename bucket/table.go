@@ -1,25 +1,24 @@
-package table
+package bucket 
 
 import (
 	"fmt"
-	"go-limits/bucket"
 )
 
 type Table struct {
-	Buckets map[string]*bucket.Bucket
+	Buckets map[string]*Bucket
 }
 
 func NewTable() *Table {
 	return &Table{
-		Buckets: make(map[string]*bucket.Bucket),
+		Buckets: make(map[string]*Bucket),
 	}
 }
 
-func (t *Table) GetBucket(ip string) *bucket.Bucket {
+func (t *Table) GetBucket(ip string) *Bucket {
 	if bucket, ok := t.Buckets[ip]; ok {
 		return bucket
 	}
-	newBucket := bucket.NewBucket()
+	newBucket := NewBucket()
 	t.Buckets[ip] = newBucket
 	return newBucket
 }

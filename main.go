@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"go-limits/table"
 	"go-limits/window"
 	"net/http"
+	"go-limits/bucket"
 )
 
-var tbl *table.Table
+var tbl *bucket.Table
 var fixedWindowlimiter *window.FixedWindowLimiter
 
 func getClientIpAddr(req *http.Request) string {
@@ -18,7 +18,7 @@ func getClientIpAddr(req *http.Request) string {
 	return req.RemoteAddr
 }
 
-func bucket(w http.ResponseWriter, r *http.Request) {
+func bucketHandler(w http.ResponseWriter, r *http.Request) {
 	ip := getClientIpAddr(r)
 	if tbl.HandleRequest(ip) {
 		w.WriteHeader(http.StatusOK)
@@ -43,11 +43,10 @@ func fixedWindow(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	//tbl = table.NewTable()
+	tbl = bucket.NewTable()
 	fixedWindowlimiter = window.NewFixedWindowLimiter(5, 10)
-	http.HandleFunc("/limitedBucket", bucket)
+	http.HandleFunc("/limitedBucket", bucketHandler)
 	http.HandleFunc("/limitedFixedWindow", fixedWindow)
-
 
 	http.ListenAndServe(":8080", nil)
 }
