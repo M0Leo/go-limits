@@ -1,14 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"go-limits/window"
 	"net/http"
-	"go-limits/bucket"
 )
 
-var tbl *bucket.Table
-var fixedWindowlimiter *window.FixedWindowLimiter
+var limiter Limiter
+var limiterType = flag.String("limiter", "bucket", "limiter type")
 
 func getClientIpAddr(req *http.Request) string {
 	clientIp := req.Header.Get("X-FORWARDED-FOR")
@@ -20,7 +19,7 @@ func getClientIpAddr(req *http.Request) string {
 
 func bucketHandler(w http.ResponseWriter, r *http.Request) {
 	ip := getClientIpAddr(r)
-	if tbl.HandleRequest(ip) {
+	if limiter.HandleRequest(ip) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Request handled successfully.")
 	} else {
@@ -32,7 +31,19 @@ func bucketHandler(w http.ResponseWriter, r *http.Request) {
 
 func fixedWindow(w http.ResponseWriter, r *http.Request) {
 	ip := getClientIpAddr(r)
-	if fixedWindowlimiter.HandleRequest(ip) {
+	if limiter.HandleRequest(ip) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Request handled successfully.")
+	} else {
+		w.WriteHeader(http.StatusTooManyRequests)
+		fmt.Fprint(w, "Request declined.")
+	}
+	fmt.Fprintf(w, "limited %s", ip)
+}
+
+func slidingWindow(w http.ResponseWriter, r *http.Request) {
+	ip := getClientIpAddr(r)
+	if limiter.HandleRequest(ip) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Request handled successfully.")
 	} else {
@@ -43,10 +54,13 @@ func fixedWindow(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	tbl = bucket.NewTable()
-	fixedWindowlimiter = window.NewFixedWindowLimiter(5, 10)
+
+	flag.Parse()
+	limiter = getLimiter(*limiterType)
+
 	http.HandleFunc("/limitedBucket", bucketHandler)
 	http.HandleFunc("/limitedFixedWindow", fixedWindow)
+	http.HandleFunc("/limitedSlidingWindow", slidingWindow)
 
 	http.ListenAndServe(":8080", nil)
 }
