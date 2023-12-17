@@ -4,7 +4,7 @@ import (
 	"go-limits/bucket"
 	"go-limits/sliding"
 	"go-limits/slidingcounter"
-	"go-limits/window"
+	"go-limits/fixed_window"
 	"time"
 )
 
